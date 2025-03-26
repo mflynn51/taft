@@ -1,0 +1,38 @@
+{% extends "divert/layout.html" %}
+
+{% block body %}
+
+    
+        <style>
+            body {
+                padding: 20px;
+                background-color: rgb(196, 243, 245);
+                border: 2px solid rgb(0, 0, 0);
+            }
+            
+        </style>
+        
+
+
+        
+        <h3>Water rights owners list</h3>
+        <ul>
+            <h5> ID#:  {{location.id}} </h5>
+            <h5> POD#:  {{location.pod}} </h5>
+            <h5> OWNER:  {{location.owner}} </h5>
+            <h5> LATITUDE:  {{location.latitude}} </h5>
+            <h5> LONGITUDE:  {{location.longitude}} </h5>
+            <h5> FACE VALUE IN ACRE FEET:  {{location.faceValueAF}} </h5>
+            <h5> DIVERSION CFS:  {{location.podRate}} </h5>
+            <h5> STATUS:  {{location.status}} </h5>
+            
+        </ul>
+        <h3></h3>
+        <form method="post" action="{% url 'delete_geo_point' location.id %}">
+            {% csrf_token %}
+            <button type="submit">Delete Location</button>
+        </form>
+
+
+    
+{% endblock %}

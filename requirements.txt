@@ -1,0 +1,6 @@
+The following packages need to installed prior to running the application:
+Django
+geojson
+folium
+django-leaflet
+

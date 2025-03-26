@@ -1,0 +1,250 @@
+{% extends "divert/layout.html" %}
+
+{% block body %}
+
+<style>
+    .pagination {
+        display: inline-block;
+        }
+
+    .pagination a {
+        color: black;
+        float: left;
+        padding: 8px 16px;
+        text-decoration: none;
+        }
+</style>
+
+<div class="container"></div>
+
+<div class="row">
+    
+    <div class="col-lg-3">
+        <form method="post" id="itemForm" action="{% url 'location' %}">
+            {% csrf_token %}
+            Water Diversion Application Form
+            <label for="latitude">Latitude:   </label>
+            <br>
+            <input type="text" id="latitude" name="latitude">
+            <br>
+            <label for="longitude">Longitude:</label>
+            <br>
+            <input type="text" id="longitude" name="longitude">   
+            <br>
+            <label for="name">Water diversion POD#:</label>
+            <br>
+            <input type="text" id="pod" name="pod" value="">
+            <br>
+            <label for="name">Water diversion type:</label>
+            <br>
+            <input type="text" id="podType" name="podType" value="Riparian">
+            <br>
+            <label for="name">Water diversion rate:</label>
+            <br>
+            <input type="text" id="podRate" name="podRate" value="">
+            <br>
+            <label for="name">Water diversion units:</label>
+            <br>
+            <input type="text" id="units" name="units" value="AF">
+            <br>
+            <label for="name">Water storage Acre Feet:</label>
+            <br>
+            <input type="text" id="podStorage" name="podStorage" value="">
+            <br>
+            <label for="name">Owner:</label>
+            <br>
+            <input type="text" id="owner" name="owner" value="">
+            <br>
+            <label for="name">Face Value in Acre Feet:</label>
+            <br>
+            <input type="text" id="faceValueAF" name="faceValueAF" value="">
+            <br>
+            <label for="name">Max Diversion:</label>
+            <br>
+            <input type="text" id="maxDiversionFlow" name="maxDiversionFlow" value="">
+            <br>
+            <label for="name">Units :</label>
+            <br>
+            <input type="text" id="unitsFlow" name="unitsFlow" value="CFS">
+            <br>
+            <label for="name">Status :</label>
+            <br>
+            <input type="text" id="status" name="status" value="Pending">   
+            <br>
+            <button type="submit">Submit Location</button>
+        </form>
+
+        <form action="{% url 'delete_all_pods' %}" method="post" style="margin-top: 20px;">
+            {% csrf_token %}
+            <button type="submit">Delete All PODs Rights</button>
+        </form>
+
+        <ul id="locations"></ul>
+    
+        
+    </div>
+
+    <div class="col-lg-6">
+
+        <div id="map" style="height: 600px; width: 600px;" >
+            
+        </div>
+        <h1>Map Foo</h1>
+                <button id="loadMapData">Load Map Data</button>
+                <div id="map" style="height: 500px; width: 100%;"></div>
+        <a href="{% url 'index' %}">Home</a>
+
+    </div>
+
+    <div class="col-lg-3">
+        <ul id="locations"></ul>
+    
+        <h3>Water diversion locations</h3>
+        <ul>
+            {% for location in page_obj %}
+               
+                <a href="{% url 'location_point' location.id %}"><li> License#: {{ location.pod }}
+                    <br> Owner: {{ location.owner }}</li></a>
+            {% endfor %}
+        </ul>
+        <div class="pagination">
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; first</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                {% endif %}
+        
+                <span class="current">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                </span>
+        
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+  </div>
+</div>
+
+
+{{ locations|json_script:'locations_json'}}
+
+<script>
+    
+    // add map from Leaflet
+    const map = L.map('map').setView([36.3, -119.4 ], 10);
+
+    // get map from open street maps
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 15,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // construct a list of locations of water diversion points
+    const locations = JSON.parse(document.getElementById('locations_json').textContent)
+   
+    document.getElementById("loadMapData").addEventListener("click", function () {
+        // add locations of water diversion points to map 
+        locations.forEach(function(location) {
+            L.marker([location.latitude, location.longitude])
+                .addTo(map)
+                .bindPopup(`<strong></strong><br>
+                    Water Rights Info<br>
+                Status: ${location.status} <br>
+                ApplicationID:  ${location.pod} <br>
+                Owner: ${location.owner} <br>
+                Lat: ${location.latitude}, Lon: ${location.longitude} , <br>
+                Face Value: ${location.faceValueAF}AcreFeet  <br>
+                Storage: ${location.podStorage}AcreFeet`); 
+            })
+    })
+           
+    
+
+        // Handle map click event to get coordinates to auto fill the form on the left
+    map.on('click', function(e) {
+        var latitude = e.latlng.lat;
+        var longitude = e.latlng.lng;
+        
+        // Place a marker at the clicked location
+        L.circle([latitude, longitude], {
+            color: 'red',
+            fillColor: 'red',
+            fillOpacity: 0.5,
+            radius: 800
+        }).addTo(map)
+            .bindPopup(` You may apply for water diversion rights here.
+                Please complet application on the left: <br>
+                - Latitude: ${latitude}, <br>
+                - Longitude: ${longitude}`)
+            .openPopup();
+
+        // Send coordinates to Django server
+        document.getElementById('latitude').value = latitude;
+        document.getElementById('longitude').value = longitude;
+        
+    });
+
+
+    // Function to fetch and render GeoJSON from a URL on a Leaflet map
+    function renderGeoJSONFromURL(map, geojsonUrl) {
+        // Fetch the GeoJSON data
+        fetch(geojsonUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+
+            .then(data => {
+                // Filter features to include only those with "District" in their properties
+                const filteredFeatures = data.features.filter(feature => {
+                    if (feature.properties) {
+                        return Object.values(feature.properties).some(value =>
+                            String(value).includes("Water District") || String(value).includes("Irrigation District") || String(value).includes("Water Storage District")
+                        );
+                    }
+                    return false;
+                });
+
+                // Create a new GeoJSON object with the filtered features
+                const filteredGeoJSON = {
+                    type: "FeatureCollection",
+                    features: filteredFeatures
+                };
+
+                // Add the GeoJSON data to the map
+                L.geoJSON(filteredGeoJSON, {
+                    style: function (feature) {
+                        return {
+                            color: "blue",
+                            weight: 1,
+                            fillOpacity: 0.2
+                        };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        // Bind popups to each feature to display properties
+                        if (feature.properties) {
+                            const popupContent = 
+                            `${feature.properties.AGENCYNAME}`;
+                            layer.bindPopup("<strong>You cannot apply for water diversion rights inside this district:</strong><br><br> " + popupContent);
+                        }
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.error("Error fetching GeoJSON:", error);
+            });
+    }
+
+
+    // Fetch and render GeoJSON from the provided URL
+    const geojsonUrl = "https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_WaterDistricts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson";
+    
+    renderGeoJSONFromURL(map, geojsonUrl);
+</script>
+
+{% endblock %}
