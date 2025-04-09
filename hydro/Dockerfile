@@ -1,14 +1,32 @@
-FROM ubuntu:18.04
+# Use official Python image
+FROM python:3.11-slim
 
-# Install dependencies
-RUN apt-get update && \
- apt-get -y install apache2
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
 
-# Write hello world message
-RUN echo 'Hello World!' > /var/www/html/index.html
+# Set work directory
+WORKDIR /app
 
-# Open port 80
-EXPOSE 80
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Start Apache service
-CMD ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
+COPY . .
+
+# Collect static files (for production)
+RUN python manage.py collectstatic --noinput
+
+# Expose port (match this with the container port setting in Lightsail)
+EXPOSE 8000
+
+# Launch Gunicorn server
+CMD ["gunicorn", "hydro.wsgi:application", "--bind", "0.0.0.0:8000"]
