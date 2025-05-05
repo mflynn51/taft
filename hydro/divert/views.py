@@ -17,9 +17,10 @@ from django.db import IntegrityError
 # empty list of locations 
 locations = []
 
+@csrf_exempt
 def index(request):
     if request.user.is_authenticated:
-        csv_file_path = "divert\data\waterPod2.csv"
+        csv_file_path = "divert/data/waterPod3.csv"
     
         # Parse the CSV file and populate the model
         with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
@@ -29,11 +30,12 @@ def index(request):
             for row in reader:
                 #latitude, longitude, pod, podType, podRate, units, podStorage, owner, faceValueAF, maxDiversionFlow, unitsFlow, status= row #row[0], row[1], float(row[2]), float(row[3]), row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12]
                 
+                
                 GeoPoint.objects.get_or_create(
                     latitude=float(row['latitude']), 
                     longitude=float(row['longitude']), 
                     pod=(row['pod']), 
-                    podType=(row['podType']), 
+                    podType=(row['podType']),
                     podRate=int(row['podRate']), 
                     units=(row['units']), 
                     podStorage=int(row['podStorage']), 
@@ -82,7 +84,7 @@ def location(request):
     else:
         return JsonResponse({'error': 'Invalid request method'})
 
-
+@csrf_exempt
 def location_point(request, location_id):
     
     location = GeoPoint.objects.get(id=location_id)
@@ -92,6 +94,7 @@ def location_point(request, location_id):
     })      
 
 # delete all diversion points
+@csrf_exempt
 def delete_all_pods(request):
     if request.method == 'POST':
         GeoPoint.objects.all().delete()
@@ -102,7 +105,7 @@ def delete_all_pods(request):
     # Redirect to the map or another page
     return redirect('index')
 
-
+@csrf_exempt
 def login_view(request):
     if request.method == "POST":
         # Attempt to sign user in
@@ -121,11 +124,12 @@ def login_view(request):
     else:
         return render(request, "divert/login.html")
     
-
+@csrf_exempt
 def logout_view(request):
     logout(request)
     return HttpResponseRedirect(reverse("index"))
 
+@csrf_exempt
 def register(request):
     if request.method == 'POST':
         username = request.POST['username']
@@ -148,11 +152,38 @@ def register(request):
 
     return render(request, "divert/register.html")
 
-
+@csrf_exempt
 def map_river(request):
     locations = list(GeoPoint.objects.values('latitude', 'longitude', 'pod', 'podType', 'podRate', 'units', 'podStorage', 'owner', 'faceValueAF', 'maxDiversionFlow', 'unitsFlow', 'status'))
     
     return render(request, 'divert/map_river.html', {'locations': locations})
+
+@csrf_exempt
+def map_aws(request):
+    if request.user.is_authenticated:
+        csv_file_path = "divert/data/waterPod3.csv"
+    
+        # Parse the CSV file and populate the model
+        with open(csv_file_path, newline='', encoding='utf-8-sig') as csvfile:
+            #decoded_file = csvfile.read().decode('utf-8').splitlines()
+            reader = csv.DictReader(csvfile)
+
+            for row in reader:
+                # locations = list(GeoPoint.objects.values('latitude', 'longitude', 'pod', 'podType', 'podRate', 'units', 'podStorage', 'owner', 'faceValueAF', 'maxDiversionFlow', 'unitsFlow', 'status'))
+                
+                locationsX = list(GeoPoint.objects.values('latitude', 'longitude', 'pod', 'podType', 'podRate', 'units', 'podStorage', 'owner', 'faceValueAF', 'maxDiversionFlow', 'unitsFlow', 'status'))
+                locations = sorted(locationsX, key=lambda x: x['pod'])
+                locations_total  = GeoPoint.objects.all().order_by('-id')
+                paginator = Paginator(locations_total, 10)
+                page_number = request.GET.get('page')
+                page_obj = paginator.get_page(page_number)
+
+    return render(request, 'divert/map_aws.html', {'locations': locations, 'page_obj': page_obj})
+
+@csrf_exempt
+def map_aws_libre(request):
+    
+    return render(request, 'divert/map_aws_libre.html')
 
 '''
 def map_foo(request):
@@ -191,6 +222,7 @@ def map_foo(request):
     return render(request, "divert/map_foo.html", {'locations': locations, 'page_obj': page_obj})
 '''
 
+@csrf_exempt
 def delete_geo_point(request, location_id):
     location = get_object_or_404(GeoPoint, id=location_id)
 

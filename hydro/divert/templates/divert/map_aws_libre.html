@@ -1,0 +1,253 @@
+<!-- Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved. -->
+<!-- SPDX-License-Identifier: MIT-0 -->
+<html>
+      <head>
+            <link
+                  href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.css"
+                  rel="stylesheet"
+            />
+            <style>
+                  body {
+                        margin: 0;
+                  }
+                  #map {
+                        height: 100vh;
+                  }
+                  .layer-control {
+                        position: absolute;
+                        background: #fff;
+                        padding: 10px;
+                        right: 10px;
+                        top: 10px;
+                        z-index: 10;
+                  }
+            </style>
+      </head>
+      <body>
+            <div id="map" />
+            <!-- Layer control -->
+            <div class="layer-control">
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Standard:Light"
+                        checked="checked"
+                  />
+                  <label for="map-style-standard-light">StandardLight</label>
+                  <div />
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Standard:Dark"
+                  />
+                  <label for="map-style-standard-dark">StandardDark</label>
+                  <div />
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Monochrome:Light"
+                  />
+                  <label for="map-style-monochrome-light"
+                        >MonochromeLight</label
+                  >
+                  <div />
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Monochrome:Dark"
+                  />
+                  <label for="map-style-monochrome-dark">MonochromeDark</label>
+                  <div />
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Hybrid"
+                  />
+                  <label for="map-style-hybrid">Hybrid</label>
+                  <div />
+                  <input
+                        class="layer"
+                        type="radio"
+                        name="map-style"
+                        value="Satellite"
+                  />
+                  <label for="map-style-satellite">Satellite</label>
+            </div>
+            <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
+            <script>
+                  async function initializeMap() {
+                        const apiKey = "v1.public.eyJqdGkiOiI3NzhjODBiZS01OGVlLTQzZDQtYjJlOC1jZWNjOTJkNTI3YTQifUKuSyxdMDBCxkGqmkII1c_7L6T-ewrXS-ALCQbowQsl7HUrkOXY0Rx7KsAHjDqQRASGMNVG6plCk7AjYrZ32S5tZcCRH4Sc7TakT3cIyipnYwA1YbZ0aKTyEnHNfl5uNfzrvw4INKiDNNUJDytyf96qVPCIjNm8Ty1HIJoOtDC37yzp_dacYubxML8pugr35e3RVOGG06W2fEV9j-WvK_QfSyH6MxRltHw5cvfF4ohWJ9sUmO0-U8RPNC3xH2jB2kceMk7vnlEuoz6mBdwzVbDW0q2lPPYXuDEoYqBJfALBslmiIIQrJQVWIiiy4ZCgUJxeeeS28NGXGZvxGLd3cRI.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+                        const region = "us-east-1";
+
+                        // Initialize the map
+                        const map = new maplibregl.Map({
+                              container: "map",
+                              // Initial map centerpoint
+                              center: [-119.5, 36.5],
+                              // Initial zoom level
+                              zoom: 10,
+                              style: `https://maps.geo.${region}.amazonaws.com/v2/styles/Standard/descriptor?key=${apiKey}&color-scheme=Light`,
+                              validateStyle: false, // Disable style validation for faster map load
+                        });
+
+                        // Add navigation controls
+                        map.addControl(
+                              new maplibregl.NavigationControl(),
+                              "top-left"
+                        );
+
+                        // Switch map styles
+                        const mapStyles = document.querySelectorAll(
+                              ".layer-control .layer"
+                        );
+
+                        const geojsonUrl = "https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_WaterDistricts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson";
+
+        fetch(geojsonUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(geojson => {
+                // Add the GeoJSON data as a source
+                map.addSource('water-districts', {
+                    type: 'geojson',
+                    data: geojson
+                });
+
+
+                // Add a layer to display the water districts polygons
+                map.addLayer({
+                    id: 'water-districts-fill',
+                    type: 'fill',
+                    source: 'water-districts',
+                    paint: {
+                        'fill-color': 'rgba(70, 130, 180, 0.6)', // Steel Blue with some transparency
+                        'fill-outline-color': 'rgba(30, 70, 100, 1)'
+                    }
+                });
+
+                // Add a layer for the borders of the water districts
+                map.addLayer({
+                    id: 'water-districts-lines',
+                    type: 'line',
+                    source: 'water-districts',
+                    paint: {
+                        'line-color': 'rgba(30, 70, 100, 1)',
+                        'line-width': 1
+                    }
+                });
+            })
+
+            .catch(error => {
+                console.error('Error fetching GeoJSON:', error);
+            });
+
+                        for (const mapStyle of mapStyles) {
+                              mapStyle.onclick = (style) => {
+                                    const mapStyleCombo = style.target.value;
+                                    const [mapStyle, mapColorScheme] =
+                                          mapStyleCombo.split(":");
+                                    map.setStyle(
+                                          `https://maps.geo.${region}.amazonaws.com/v2/styles/${mapStyle}/descriptor?key=${apiKey}${
+                                                !!mapColorScheme
+                                                      ? `&color-scheme=${mapColorScheme}`
+                                                      : ""
+                                          }`
+                                    );
+                              };
+                        }
+                  }
+
+                  initializeMap();
+
+                  map.on("load", () => {
+                    // Add a data source containing GeoJSON data.
+                    map.addSource("amazon-lockers", {
+                          type: "geojson",
+                          data: {
+                                type: "FeatureCollection",
+                                features: [
+                                      {
+                                            type: "Feature",
+                                            geometry: {
+                                                  type: "Point",
+                                                  coordinates: [
+                                                        -123.13271,
+                                                        49.2901,
+                                                  ],
+                                            },
+                                            properties: {
+                                                  title: "Amazon Hub Locker - Robson",
+                                                  address: "1675 Robson St, Vancouver, BC V6G 1C8, Canada",
+                                            },
+                                      },
+                                      {
+                                            type: "Feature",
+                                            geometry: {
+                                                  type: "Point",
+                                                  coordinates: [
+                                                        -123.13428,
+                                                        49.2807,
+                                                  ],
+                                            },
+                                            properties: {
+                                                  title: "Amazon Hub Locker - Bobtail",
+                                                  address: "1176 Burnaby St, Vancouver, BC V6E 1P1, Canada",
+                                            },
+                                      },
+                                      {
+                                            type: "Feature",
+                                            geometry: {
+                                                  type: "Point",
+                                                  coordinates: [
+                                                        -123.12419,
+                                                        49.28169,
+                                                  ],
+                                            },
+                                            properties: {
+                                                  title: "Amazon Hub Locker - Voltmeter",
+                                                  address: "900 Burrard St, Vancouver, BC V6Z 3G5, Canada",
+                                            },
+                                      },
+                                      {
+                                            type: "Feature",
+                                            geometry: {
+                                                  type: "Point",
+                                                  coordinates: [
+                                                        -123.12858,
+                                                        49.27838,
+                                                  ],
+                                            },
+                                            properties: {
+                                                  title: "Amazon Hub Locker - Asif",
+                                                  address: "904 Davie St, Vancouver, BC V6Z 1B8, Canada",
+                                            },
+                                      },
+                                ],
+                          },
+                    });
+
+                    // Add a new layer to visualize the points.
+                    map.addLayer({
+                          id: "amazon-lockers",
+                          type: "circle",
+                          source: "amazon-lockers",
+                          paint: {
+                                "circle-radius": 80,
+                                "circle-color": "#0080ff",
+                          },
+                    });
+                    initializeMap();
+              });
+                  
+            </script>
+      </body>
+</html>

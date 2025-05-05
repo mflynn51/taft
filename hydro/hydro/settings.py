@@ -16,6 +16,8 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+CSRF_COOKIE_SECURE = False # i added to try to fix 403 error
+SESSION_COOKIE_SECURE = False # i added to try to fix 403 error
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -24,12 +26,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-i(l!!3b#$dn$33z!n8q#s3%w9*q+842^h-v^ntu4_%&p^&!b#7"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False # changed from True on 3/31/25 for Bitnami
+DEBUG = True # changed from True on 3/31/25 for Bitnami
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
+
+
 
 INSTALLED_APPS = [
     
@@ -53,6 +57,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
 ROOT_URLCONF = "hydro.urls"
@@ -79,10 +84,23 @@ WSGI_APPLICATION = "hydro.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+
+'''  this the original Django db setup
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        'NAME': '/data/db.sqlite3',
+    }
+}
+'''
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'dbmasteruser',
+        'PASSWORD': 'ux}QH6%>Rr<`-,0|aAp^)nM5m^AvQ5hA',
+        'HOST': 'ls-85cababd0c153104e11ff8fab6f5d0cfa213aed9.c6jyya6m85sp.us-east-1.rds.amazonaws.com',
+        'PORT': '5432',
     }
 }
 

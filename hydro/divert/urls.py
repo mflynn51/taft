@@ -10,6 +10,8 @@ urlpatterns = [
     path('delete-all-pods/', views.delete_all_pods, name='delete_all_pods'),
     path('location/', views.location, name="location"),
     path('map_river/', views.map_river, name='map_river'),
+    path('map_aws/', views.map_aws, name='map_aws'),
+    path('map_aws_libre/', views.map_aws_libre, name='map_aws_libre'),
     #path('map_foo/', views.map_foo, name='map_foo'),
     path('delete_geo_point/<int:location_id>', views.delete_geo_point, name='delete_geo_point'),
 

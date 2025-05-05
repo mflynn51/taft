@@ -110,8 +110,6 @@
         </div>
             <button id="loadMapData">Load Map Data</button>
             
-        
-
     </div>
 
     <div class="col-lg-3">
@@ -158,6 +156,31 @@
         maxZoom: 15,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
+
+    //attempt to add current location
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+    
+            const userLocation = L.latLng(lat, lng);
+            map.setView(userLocation, 13); // Zoom to location
+    
+            // Add a marker
+            L.marker(userLocation).addTo(map)
+              .bindPopup("You are here!")
+              .openPopup();
+          },
+          function(error) {
+            alert("Geolocation failed: " + error.message);
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by this browser.");
+      }
+
+   
 
     // construct a list of locations of water diversion points
     const locations = JSON.parse(document.getElementById('locations_json').textContent)

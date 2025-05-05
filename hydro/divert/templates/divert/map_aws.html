@@ -1,0 +1,333 @@
+{% extends "divert/layout.html" %}
+
+{% block body %}
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.css" rel="stylesheet"/>
+</head>
+<style>
+    #container {
+                display: flex;
+                flex-wrap: wrap;
+            }
+
+    body {
+        padding: 0;
+        margin: 0;
+    }
+    html, body, #map {
+        height: 100%;
+        width: 100vw;
+    }
+    
+    .layer-control {
+        position: absolute;
+        background: #fff;
+        padding: 5px;
+        right: 5px;
+        top: 5px;
+        z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+                #map {
+                    height: 50vh; 
+                }
+                }
+    
+    .pagination {
+        display: inline-block;
+        }
+
+    .pagination a {
+        color: black;
+        float: left;
+        padding: 8px 16px;
+        text-decoration: none;
+        }
+</style>
+
+<div class="container"></div>
+
+<div class="row">
+    
+    <div class="col-lg-3">
+        <form method="post" id="itemForm" action="{% url 'location' %}">
+            {% csrf_token %}
+            Water Diversion Application Form
+            <label for="latitude">Latitude:   </label>
+            <br>
+            <input type="text" id="latitude" name="latitude">
+            <br>
+            <label for="longitude">Longitude:</label>
+            <br>
+            <input type="text" id="longitude" name="longitude">   
+            <br>
+            <label for="name">Water diversion POD#:</label>
+            <br>
+            <input type="text" id="pod" name="pod" value="">
+            <br>
+            <label for="name">Water diversion type:</label>
+            <br>
+            <input type="text" id="podType" name="podType" value="Riparian">
+            <br>
+            <label for="name">Water diversion rate:</label>
+            <br>
+            <input type="text" id="podRate" name="podRate" value="">
+            <br>
+            <label for="name">Water diversion units:</label>
+            <br>
+            <input type="text" id="units" name="units" value="AF">
+            <br>
+            <label for="name">Water storage Acre Feet:</label>
+            <br>
+            <input type="text" id="podStorage" name="podStorage" value="">
+            <br>
+            <label for="name">Owner:</label>
+            <br>
+            <input type="text" id="owner" name="owner" value="">
+            <br>
+            <label for="name">Face Value in Acre Feet:</label>
+            <br>
+            <input type="text" id="faceValueAF" name="faceValueAF" value="">
+            <br>
+            <label for="name">Max Diversion:</label>
+            <br>
+            <input type="text" id="maxDiversionFlow" name="maxDiversionFlow" value="">
+            <br>
+            <label for="name">Units :</label>
+            <br>
+            <input type="text" id="unitsFlow" name="unitsFlow" value="CFS">
+            <br>
+            <label for="name">Status :</label>
+            <br>
+            <input type="text" id="status" name="status" value="Pending">   
+            <br>
+            <button type="submit">Submit Location</button>
+        </form>
+
+        <form action="{% url 'delete_all_pods' %}" method="post" style="margin-top: 20px;">
+            {% csrf_token %}
+            <button type="submit">Delete All PODs Rights</button>
+        </form>
+
+        <ul id="locations"></ul>
+    
+    </div>
+
+    <div class="col-lg-6">
+        
+        <div id="map" style="height: 600px; width: 600px;" > </div>
+        <!-- Layer control -->
+        <div class="layer-control">
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Standard:Light"
+                  checked="checked"
+            />
+            <label for="map-style-standard-light">StandardLight</label>
+            <div />
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Standard:Dark"
+            />
+            <label for="map-style-standard-dark">StandardDark</label>
+            <div />
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Monochrome:Light"
+            />
+            <label for="map-style-monochrome-light"
+                  >MonochromeLight</label
+            >
+            <div />
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Monochrome:Dark"
+            />
+            <label for="map-style-monochrome-dark">MonochromeDark</label>
+            <div />
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Hybrid"
+            />
+            <label for="map-style-hybrid">Hybrid</label>
+            <div />
+            <input
+                  class="layer"
+                  type="radio"
+                  name="map-style"
+                  value="Satellite"
+            />
+            <label for="map-style-satellite">Satellite</label>
+      </div>
+
+        <button id="loadMapData">Load Map Data</button>
+            
+    </div>
+
+    <div class="col-lg-3">
+        <ul id="locations"></ul>
+    
+        <h3>Water diversion locations</h3>
+        <ul>
+            {% for location in page_obj %}
+               
+                <a href="{% url 'location_point' location.id %}"><li> License#: {{ location.pod }}
+                    <br> Owner: {{ location.owner }}</li></a>
+            {% endfor %}
+        </ul>
+        <div class="pagination">
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; first</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                {% endif %}
+        
+                <span class="current">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                </span>
+        
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+        
+    </div>
+  
+</div>
+
+
+
+{{ locations|json_script:'locations_json'}}
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
+
+<script>
+    async function initializeMap() {
+        const apiKey = "v1.public.eyJqdGkiOiI3NzhjODBiZS01OGVlLTQzZDQtYjJlOC1jZWNjOTJkNTI3YTQifUKuSyxdMDBCxkGqmkII1c_7L6T-ewrXS-ALCQbowQsl7HUrkOXY0Rx7KsAHjDqQRASGMNVG6plCk7AjYrZ32S5tZcCRH4Sc7TakT3cIyipnYwA1YbZ0aKTyEnHNfl5uNfzrvw4INKiDNNUJDytyf96qVPCIjNm8Ty1HIJoOtDC37yzp_dacYubxML8pugr35e3RVOGG06W2fEV9j-WvK_QfSyH6MxRltHw5cvfF4ohWJ9sUmO0-U8RPNC3xH2jB2kceMk7vnlEuoz6mBdwzVbDW0q2lPPYXuDEoYqBJfALBslmiIIQrJQVWIiiy4ZCgUJxeeeS28NGXGZvxGLd3cRI.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+        const region = "us-east-1";
+
+        // Initialize the map
+        const map = new maplibregl.Map({
+              container: "map",
+              // Initial map centerpoint
+              center: [-119.5, 36.5],
+              // Initial zoom level
+              zoom: 10,
+              style: `https://maps.geo.${region}.amazonaws.com/v2/styles/Standard/descriptor?key=${apiKey}&color-scheme=Light`,
+              validateStyle: false, // Disable style validation for faster map load
+        });
+
+        // Add navigation controls
+        // Add navigation controls
+        map.addControl(
+            new maplibregl.NavigationControl(),
+            "top-right"
+        );
+
+        // Switch map styles
+        const mapStyles = document.querySelectorAll(
+                ".layer-control .layer"
+        );
+
+       
+        const geojsonUrl = "https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_WaterDistricts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson";
+
+fetch(geojsonUrl)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(geojson => {
+// Add the GeoJSON data as a source
+        map.addSource('water-districts', {
+            type: 'geojson',
+            data: geojson
+    });
+
+
+// Add a layer to display the water districts polygons
+    map.addLayer({
+        id: 'water-districts-fill',
+        type: 'fill',
+        source: 'water-districts',
+        paint: {
+            'fill-color': 'rgba(70, 130, 180, 0.6)', // Steel Blue with some transparency
+            'fill-outline-color': 'rgba(30, 70, 100, 1)'
+        }
+    });
+
+    // Add a layer for the borders of the water districts
+    map.addLayer({
+        id: 'water-districts-lines',
+        type: 'line',
+        source: 'water-districts',
+        paint: {
+            'line-color': 'rgba(30, 70, 100, 1)',
+            'line-width': 1
+        }
+    });
+    })
+
+    .catch(error => {
+    console.error('Error fetching GeoJSON:', error);
+    });
+
+            for (const mapStyle of mapStyles) {
+                mapStyle.onclick = (style) => {
+                        const mapStyleCombo = style.target.value;
+                        const [mapStyle, mapColorScheme] =
+                            mapStyleCombo.split(":");
+                        map.setStyle(
+                            `https://maps.geo.${region}.amazonaws.com/v2/styles/${mapStyle}/descriptor?key=${apiKey}${
+                                    !!mapColorScheme
+                                        ? `&color-scheme=${mapColorScheme}`
+                                        : ""
+                            }`
+                        );
+                };
+            }
+            const locations = JSON.parse(document.getElementById('locations_json').textContent);
+
+    locations.forEach(function(location) {
+        const marker = new maplibregl.Marker()
+            .setLngLat([location.longitude, location.latitude]) // MapLibre uses [longitude, latitude]
+            .addTo(map);
+
+        const popup = new maplibregl.Popup({
+            offset: 25
+        })
+        .setHTML(
+            `<strong></strong><br>
+            <a href="${location.url}" target="_blank">Water Rights Info</a><br>
+            ApplicationID: ${location.pod} <br>
+            Owner: ${location.owner} <br>
+            Lat: ${location.latitude}, Lon: ${location.longitude} , <br>
+            Max Flow rate: ${location.podRate} ${location.units} <br>
+            Face Value: ${location.faceValueAF} AcreFeet <br>
+            Storage: ${location.podStorage} AcreFeet`
+        );
+
+        marker.setPopup(popup);
+    });
+    }
+
+    initializeMap();
+           
+</script>
+
+{% endblock %}

@@ -218,6 +218,7 @@ function renderGeoJSONFromURL(map, geojsonUrl) {
              Face Value: ${location.faceValueAF}AcreFeet  <br>
              Storage: ${location.podStorage}AcreFeet`); 
         });
+        
         // Handle map click event
         map.on('click', function(e) {
         var latitude = e.latlng.lat;
