@@ -8,12 +8,13 @@
     #container {
                 display: flex;
                 flex-wrap: wrap;
-            }
+    }
 
     body {
         padding: 0;
         margin: 0;
     }
+
     html, body, #map {
         height: 100%;
         width: 100vw;
@@ -116,62 +117,10 @@
 
     <div class="col-lg-6">
         
-        <div id="map" style="height: 600px; width: 600px;" > </div>
-        <!-- Layer control -->
-        <div class="layer-control">
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Standard:Light"
-                  checked="checked"
-            />
-            <label for="map-style-standard-light">StandardLight</label>
-            <div />
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Standard:Dark"
-            />
-            <label for="map-style-standard-dark">StandardDark</label>
-            <div />
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Monochrome:Light"
-            />
-            <label for="map-style-monochrome-light"
-                  >MonochromeLight</label
-            >
-            <div />
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Monochrome:Dark"
-            />
-            <label for="map-style-monochrome-dark">MonochromeDark</label>
-            <div />
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Hybrid"
-            />
-            <label for="map-style-hybrid">Hybrid</label>
-            <div />
-            <input
-                  class="layer"
-                  type="radio"
-                  name="map-style"
-                  value="Satellite"
-            />
-            <label for="map-style-satellite">Satellite</label>
-      </div>
-
-        <button id="loadMapData">Load Map Data</button>
+        <div id="map" style="height: 600px; width: 600px;" >
+            
+        </div>
+            <button id="loadMapData">Load Map Data</button>
             
     </div>
 
@@ -237,96 +186,201 @@
             "top-right"
         );
 
-        // Switch map styles
-        const mapStyles = document.querySelectorAll(
-                ".layer-control .layer"
-        );
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showLocation, handleLocationError);
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
 
-       
+        function showLocation(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            map.setCenter([longitude, latitude]);
+
+            const geojson = {
+                'type': 'FeatureCollection',
+                'features': [
+                    {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Point',
+                            'coordinates': [longitude, latitude]
+                        }
+                    }
+                ]
+            };
+
+            // Add a data source for the current location
+            map.addSource('current-location', {
+                'type': 'geojson',
+                'data': geojson
+            });
+
+            // Add a layer to render the current location as a red circle
+            map.addLayer({
+                'id': 'current-location-circle',
+                'type': 'circle',
+                'source': 'current-location',
+                'paint': {
+                    'circle-radius': 10,
+                    'circle-color': '#FF0000', // Red color
+                    'circle-opacity': 0.8
+                }
+            });
+
+            // Create a popup
+            const popup = new maplibregl.Popup({ offset: 25 })
+                .setHTML(`<b>Your Location</b><br>Latitude: ${latitude.toFixed(6)}<br>Longitude: ${longitude.toFixed(6)}`);
+
+            // Attach the popup to the layer (will open on click)
+            map.on('click', 'current-location-circle', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                popup.setLngLat(coordinates).addTo(map);
+            });
+
+            // Optionally, you can add a marker as well if you prefer a traditional marker icon
+            // new maplibregl.Marker({ color: '#FF0000' })
+            //     .setLngLat([longitude, latitude])
+            //     .setPopup(popup)
+            //     .addTo(map);
+        }
+
+        function handleLocationError(error) {
+            let errorMessage = "Unable to retrieve your location.";
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    errorMessage = "An unknown error occurred.";
+                    break;
+            }
+            alert(errorMessage);
+        }
+
+        
         const geojsonUrl = "https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_WaterDistricts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson";
 
-fetch(geojsonUrl)
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        fetch(geojsonUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(geojson => {
+        // Add the GeoJSON data as a source
+                map.addSource('water-districts', {
+                    type: 'geojson',
+                    data: geojson
+            });
+
+
+        // Add a layer to display the water districts polygons
+            map.addLayer({
+                id: 'water-districts-fill',
+                type: 'fill',
+                source: 'water-districts',
+                paint: {
+                    'fill-color': 'rgba(70, 130, 180, 0.6)', // Steel Blue with some transparency
+                    'fill-outline-color': 'rgba(30, 70, 100, 1)'
+                }
+            });
+
+            // Add a layer for the borders of the water districts
+            map.addLayer({
+                id: 'water-districts-lines',
+                type: 'line',
+                source: 'water-districts',
+                paint: {
+                    'line-color': 'rgba(30, 70, 100, 1)',
+                    'line-width': 1
+                }
+            });
+            })
+
+            .catch(error => {
+            console.error('Error fetching GeoJSON:', error);
+            });
+
+        const locations = JSON.parse(document.getElementById('locations_json').textContent);
+
+        locations.forEach(function(location) {
+            const marker = new maplibregl.Marker()
+                .setLngLat([location.longitude, location.latitude]) // MapLibre uses [longitude, latitude]
+                .addTo(map);
+
+            const popup = new maplibregl.Popup({
+                offset: 25
+            })
+            .setHTML(
+                `<strong></strong><br>
+                <a href="${location.url}" target="_blank">Water Rights Info</a><br>
+                ApplicationID: ${location.pod} <br>
+                Owner: ${location.owner} <br>
+                Lat: ${location.latitude}, Lon: ${location.longitude} , <br>
+                Max Flow rate: ${location.podRate} ${location.units} <br>
+                Face Value: ${location.faceValueAF} AcreFeet <br>
+                Storage: ${location.podStorage} AcreFeet`
+            );
+
+            marker.setPopup(popup);
+        });
         }
-        return response.json();
-    })
-    .then(geojson => {
-// Add the GeoJSON data as a source
-        map.addSource('water-districts', {
-            type: 'geojson',
-            data: geojson
-    });
 
+    
+    
 
-// Add a layer to display the water districts polygons
-    map.addLayer({
-        id: 'water-districts-fill',
-        type: 'fill',
-        source: 'water-districts',
-        paint: {
-            'fill-color': 'rgba(70, 130, 180, 0.6)', // Steel Blue with some transparency
-            'fill-outline-color': 'rgba(30, 70, 100, 1)'
-        }
-    });
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(zoomToLocation, handleLocationError);
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
 
-    // Add a layer for the borders of the water districts
-    map.addLayer({
-        id: 'water-districts-lines',
-        type: 'line',
-        source: 'water-districts',
-        paint: {
-            'line-color': 'rgba(30, 70, 100, 1)',
-            'line-width': 1
-        }
-    });
-    })
+    function zoomToLocation(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
 
-    .catch(error => {
-    console.error('Error fetching GeoJSON:', error);
-    });
+        map.flyTo({
+            center: [longitude, latitude],
+            zoom: 15 // Adjust zoom level as needed
+        });
 
-            for (const mapStyle of mapStyles) {
-                mapStyle.onclick = (style) => {
-                        const mapStyleCombo = style.target.value;
-                        const [mapStyle, mapColorScheme] =
-                            mapStyleCombo.split(":");
-                        map.setStyle(
-                            `https://maps.geo.${region}.amazonaws.com/v2/styles/${mapStyle}/descriptor?key=${apiKey}${
-                                    !!mapColorScheme
-                                        ? `&color-scheme=${mapColorScheme}`
-                                        : ""
-                            }`
-                        );
-                };
-            }
-            const locations = JSON.parse(document.getElementById('locations_json').textContent);
-
-    locations.forEach(function(location) {
-        const marker = new maplibregl.Marker()
-            .setLngLat([location.longitude, location.latitude]) // MapLibre uses [longitude, latitude]
+        // Optionally add a marker for the current location
+        new maplibregl.Marker()
+            .setLngLat([longitude, latitude])
             .addTo(map);
+    }
 
-        const popup = new maplibregl.Popup({
-            offset: 25
-        })
-        .setHTML(
-            `<strong></strong><br>
-            <a href="${location.url}" target="_blank">Water Rights Info</a><br>
-            ApplicationID: ${location.pod} <br>
-            Owner: ${location.owner} <br>
-            Lat: ${location.latitude}, Lon: ${location.longitude} , <br>
-            Max Flow rate: ${location.podRate} ${location.units} <br>
-            Face Value: ${location.faceValueAF} AcreFeet <br>
-            Storage: ${location.podStorage} AcreFeet`
-        );
-
-        marker.setPopup(popup);
-    });
+    function handleLocationError(error) {
+        let errorMessage = "Unable to retrieve your location.";
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = "User denied the request for Geolocation.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                errorMessage = "The request to get user location timed out.";
+                break;
+            case error.UNKNOWN_ERROR:
+                errorMessage = "An unknown error occurred.";
+                break;
+        }
+        alert(errorMessage);
     }
 
     initializeMap();
+
+    
            
 </script>
 

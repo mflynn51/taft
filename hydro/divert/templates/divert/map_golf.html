@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Display a hybrid satellite map with terrain elevation</title>
+    <meta property="og:description" content="Display a hybrid satellite map with terrain elevation." />
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.4.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@5.4.0/dist/maplibre-gl.js'></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    const map = new maplibregl.Map({
+        container: 'map',
+        zoom: 12,
+        center: [-119.5, 36.5],
+        pitch: 70,
+        maxPitch: 95
+    });
+
+    map.setStyle('https://api.maptiler.com/maps/hybrid/style.json?key=get_your_own_OpIi9ZULNHzrESv6T2vL', {
+            transformStyle: (previousStyle, nextStyle) => {
+                nextStyle.projection = {type: 'globe'};
+                nextStyle.sources = {
+                    ...nextStyle.sources, terrainSource: {
+                        type: 'raster-dem',
+                        url: 'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=get_your_own_OpIi9ZULNHzrESv6T2vL',
+                        tileSize: 256
+                    },
+                    hillshadeSource: {
+                        type: 'raster-dem',
+                        url: 'https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=get_your_own_OpIi9ZULNHzrESv6T2vL',
+                        tileSize: 256
+                    }
+                }
+                nextStyle.terrain = {
+                    source: 'terrainSource',
+                    exaggeration: 1
+                }
+
+                nextStyle.sky = {
+                    'atmosphere-blend': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        0, 1,
+                        2, 0
+                    ],
+                }
+
+                nextStyle.layers.push({
+                    id: 'hills',
+                    type: 'hillshade',
+                    source: 'hillshadeSource',
+                    layout: { visibility: 'visible' },
+                    paint: { 'hillshade-shadow-color': '#473B24' }
+                })
+
+                return nextStyle
+            }
+        })
+
+    map.addControl(
+        new maplibregl.NavigationControl({
+            visualizePitch: true,
+            showZoom: true,
+            showCompass: true
+        })
+    );
+
+
+    map.addControl(
+        new maplibregl.GlobeControl()
+    );
+
+    map.addControl(
+        new maplibregl.TerrainControl({
+            source: 'terrainSource',
+            exaggeration: 1
+        })
+    );
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(showLocation, handleLocationError);
+  } else {
+      alert("Geolocation is not supported by this browser.");
+  }
+
+  function showLocation(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+
+      map.setCenter([longitude, latitude]);
+
+      const geojson = {
+          'type': 'FeatureCollection',
+          'features': [
+              {
+                  'type': 'Feature',
+                  'geometry': {
+                      'type': 'Point',
+                      'coordinates': [longitude, latitude]
+                  }
+              }
+          ]
+      };
+
+      // Add a data source for the current location
+      map.addSource('current-location', {
+          'type': 'geojson',
+          'data': geojson
+      });
+
+      // Add a layer to render the current location as a red circle
+      map.addLayer({
+          'id': 'current-location-circle',
+          'type': 'circle',
+          'source': 'current-location',
+          'paint': {
+              'circle-radius': 10,
+              'circle-color': '#FF0000', // Red color
+              'circle-opacity': 0.8
+          }
+      });
+
+      // Create a popup
+       const popup = new maplibregl.Popup({ offset: 25 })
+          .setHTML(`<b>Your Location</b><br>Latitude: ${latitude.toFixed(6)}<br>Longitude: ${longitude.toFixed(6)}`);
+
+      // Attach the popup to the layer (will open on click)
+
+      //map.on('click', 'current-location-circle', (e) => {
+      //    const coordinates = e.features[0].geometry.coordinates.slice();
+      //    popup.setLngLat(coordinates).addTo(map);
+      //});
+
+      // Optionally, you can add a marker as well if you prefer a traditional marker icon
+      // new maplibregl.Marker({ color: '#FF0000' })
+      //     .setLngLat([longitude, latitude])
+      //     .setPopup(popup)
+      //     .addTo(map);
+  }
+
+  function handleLocationError(error) {
+      let errorMessage = "Unable to retrieve your location.";
+      switch (error.code) {
+          case error.PERMISSION_DENIED:
+              errorMessage = "User denied the request for Geolocation.";
+              break;
+          case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable.";
+              break;
+          case error.TIMEOUT:
+              errorMessage = "The request to get user location timed out.";
+              break;
+          case error.UNKNOWN_ERROR:
+              errorMessage = "An unknown error occurred.";
+              break;
+      }
+      alert(errorMessage);
+  }
+
+  map.on('click', (e) => {
+      const lngLat = [e.lngLat.lng, e.lngLat.lat];
+
+      // Replace with your AWS Region
+      const region = 'us-east-1';
+      const apiKey = "v1.public.eyJqdGkiOiI3NzhjODBiZS01OGVlLTQzZDQtYjJlOC1jZWNjOTJkNTI3YTQifUKuSyxdMDBCxkGqmkII1c_7L6T-ewrXS-ALCQbowQsl7HUrkOXY0Rx7KsAHjDqQRASGMNVG6plCk7AjYrZ32S5tZcCRH4Sc7TakT3cIyipnYwA1YbZ0aKTyEnHNfl5uNfzrvw4INKiDNNUJDytyf96qVPCIjNm8Ty1HIJoOtDC37yzp_dacYubxML8pugr35e3RVOGG06W2fEV9j-WvK_QfSyH6MxRltHw5cvfF4ohWJ9sUmO0-U8RPNC3xH2jB2kceMk7vnlEuoz6mBdwzVbDW0q2lPPYXuDEoYqBJfALBslmiIIQrJQVWIiiy4ZCgUJxeeeS28NGXGZvxGLd3cRI.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+
+      const elevationUrl = `https://elevation.geo.${region}.amazonaws.com/v1/elevation/point?lng=${lngLat[0]}&lat=${lngLat[1]}`;
+
+      fetch(elevationUrl, {
+          headers: {
+              'X-Amz-Security-Token': apiKey // For temporary credentials
+              // If using API Key directly, you might not need this header
+          }
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          if (data && data.Elevations && data.Elevations.length > 0) {
+              const elevation = data.Elevations[0].Value;
+              new maplibregl.Popup({ offset: 25 })
+                  .setLngLat(lngLat)
+                  .setHTML(`<b>Elevation</b><br>${elevation.toFixed(2)} meters`)
+                  .addTo(map);
+          } else {
+              new maplibregl.Popup({ offset: 25 })
+                  .setLngLat(lngLat)
+                  .setHTML(`<b>Elevation</b><br>Elevation data not available at this location.`)
+                  .addTo(map);
+          }
+      })
+      .catch(error => {
+          console.error('Error fetching elevation:', error);
+          new maplibregl.Popup({ offset: 25 })
+              .setLngLat(lngLat)
+              .setHTML(`<b>Error</b><br>Failed to retrieve elevation.`)
+              .addTo(map);
+      });
+  });
+
+</script>
+</body>
+</html>

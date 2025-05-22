@@ -72,15 +72,15 @@ async function signup(user = null) {
       <div className="container mt-4">
         <Switch>
           <Route exact path={["/", "/points"]} render={(props) =>
-            <TodosList {...props} token={token} />
+            <GeoPointList {...props} token={token} />
           }>
           </Route>
           <Route path="/points/create" render={(props) =>
-            <AddTodo {...props} token={token} />
+            <AddPoint {...props} token={token} />
           }>
           </Route>
           <Route path="/points/:id" render={(props) =>
-            <AddTodo {...props} token={token} />
+            <AddPoint {...props} token={token} />
           }>
           </Route>
           <Route path="/points/login" render={(props) =>

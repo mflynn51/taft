@@ -185,6 +185,16 @@ def map_aws_libre(request):
     
     return render(request, 'divert/map_aws_libre.html')
 
+@csrf_exempt
+def map_golf(request):
+    
+    return render(request, 'divert/map_golf.html')
+
+
+@csrf_exempt
+def map_putt(request):
+    
+    return render(request, 'divert/map_putt.html')
 '''
 def map_foo(request):
     csv_file_path = "/workspaces/mflynn51/hydro/divert/data/waterPod2.csv"
