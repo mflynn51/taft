@@ -52,7 +52,7 @@ o	Javascript:  Javascript is contained inside the Index.html file.  It construct
 o	CSS:  Bootstrap, Leaflet
 
 ## Run application:
-1.	Pip install django, geojson, folium, django-leaflet
+1.	Pip install django, geojson, folium, django-leaflet,       djangorestframework, psycopg2, psycopg2-binary
 2.	CD hydro
 3.	Python manage.py runserver
 4.	Register as a new user
