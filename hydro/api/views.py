@@ -1,10 +1,16 @@
 from django.shortcuts import render
+from django.http import HttpResponse
 
 
 # Create your views here.
 from rest_framework import generics, permissions
 from divert.models import GeoPoint
+from divert.parcels import get_tulare_geojson_bytes
 from .serializers import GeoSerializer #, TodoToggleCompleteSerializer
+
+
+def parcels_tulare(request):
+    return HttpResponse(get_tulare_geojson_bytes(), content_type="application/geo+json")
 
 '''
 from django.db import IntegrityError

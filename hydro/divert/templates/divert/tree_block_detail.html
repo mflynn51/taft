@@ -1,0 +1,148 @@
+{% extends "divert/layout.html" %}
+{% block title %} {{ tree_block.name }} {% endblock %}
+{% block body %}
+
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.css" rel="stylesheet"/>
+</head>
+<style>
+    #detail-map {
+        height: 500px;
+        width: 100%;
+        max-width: 900px;
+    }
+</style>
+
+<div class="row">
+    <div class="col-lg-12">
+        <p><a href="{% url 'map_farm' %}">&laquo; Back to map_farm</a></p>
+        <h2>{{ tree_block.name }}</h2>
+
+        <table class="table table-sm">
+            <tbody>
+                <tr><th>Name</th><td>{{ tree_block.name }}</td></tr>
+                <tr><th>APN</th><td>{{ tree_block.apn }}</td></tr>
+                <tr><th>Variety</th><td>{{ tree_block.variety }}</td></tr>
+                <tr><th>Bud</th><td>{{ tree_block.bud }}</td></tr>
+                <tr><th>Rootstock</th><td>{{ tree_block.rootstock }}</td></tr>
+                <tr><th>Year Planted</th><td>{{ tree_block.year_planted }}</td></tr>
+                <tr>
+                    <th>Corner Points</th>
+                    <td>
+                        {% for point in tree_block.coordinates %}
+                        ({{ point.1 }}, {{ point.0 }})<br>
+                        {% endfor %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <form method="post" action="{% url 'delete_tree_block' tree_block.id %}"
+              onsubmit="return confirm('Delete tree block &quot;{{ tree_block.name|escapejs }}&quot;? This cannot be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Delete this tree block</button>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <h3>Location</h3>
+        <div id="detail-map"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <h3>Production Records</h3>
+        {% if production_records %}
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Pool</th>
+                    <th>Year</th>
+                    <th>Variety</th>
+                    <th>Grower</th>
+                    <th>Parcel</th>
+                    <th>Pack Start</th>
+                    <th>Pack End</th>
+                    <th>Bins</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in production_records %}
+                <tr>
+                    <td><a href="{% url 'map_pool' %}?pool={{ record.pool|urlencode }}">{{ record.pool }}</a></td>
+                    <td>{{ record.year }}</td>
+                    <td>{{ record.variety }}</td>
+                    <td>{{ record.grower }}</td>
+                    <td>{{ record.parcel }}</td>
+                    <td>{{ record.pack_start }}</td>
+                    <td>{{ record.pack_end }}</td>
+                    <td>{{ record.bins }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No production records match this ranch name.</p>
+        {% endif %}
+    </div>
+</div>
+
+{{ coordinates_json|json_script:'coordinates_json' }}
+{{ centroid_json|json_script:'centroid_json' }}
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
+<script>
+    (function () {
+        const apiKey = "v1.public.eyJqdGkiOiI3NzhjODBiZS01OGVlLTQzZDQtYjJlOC1jZWNjOTJkNTI3YTQifUKuSyxdMDBCxkGqmkII1c_7L6T-ewrXS-ALCQbowQsl7HUrkOXY0Rx7KsAHjDqQRASGMNVG6plCk7AjYrZ32S5tZcCRH4Sc7TakT3cIyipnYwA1YbZ0aKTyEnHNfl5uNfzrvw4INKiDNNUJDytyf96qVPCIjNm8Ty1HIJoOtDC37yzp_dacYubxML8pugr35e3RVOGG06W2fEV9j-WvK_QfSyH6MxRltHw5cvfF4ohWJ9sUmO0-U8RPNC3xH2jB2kceMk7vnlEuoz6mBdwzVbDW0q2lPPYXuDEoYqBJfALBslmiIIQrJQVWIiiy4ZCgUJxeeeS28NGXGZvxGLd3cRI.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+        const region = "us-east-1";
+
+        const coordinates = JSON.parse(document.getElementById('coordinates_json').textContent);
+        const centroid = JSON.parse(document.getElementById('centroid_json').textContent);
+        const ring = [...coordinates, coordinates[0]];
+
+        const map = new maplibregl.Map({
+            container: 'detail-map',
+            center: centroid,
+            zoom: 15,
+            style: `https://maps.geo.${region}.amazonaws.com/v2/styles/Satellite/descriptor?key=${apiKey}&color-scheme=Light`,
+            validateStyle: false,
+        });
+
+        map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+        map.on('load', () => {
+            map.addSource('tree-block', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: { type: 'Polygon', coordinates: [ring] },
+                },
+            });
+
+            map.addLayer({
+                id: 'tree-block-fill',
+                type: 'fill',
+                source: 'tree-block',
+                paint: { 'fill-color': '#FFFF00', 'fill-opacity': 0.4 },
+            });
+
+            map.addLayer({
+                id: 'tree-block-outline',
+                type: 'line',
+                source: 'tree-block',
+                paint: { 'line-color': '#FFFF00', 'line-width': 2 },
+            });
+
+            const bounds = ring.reduce(
+                (b, coord) => b.extend(coord),
+                new maplibregl.LngLatBounds(ring[0], ring[0])
+            );
+            map.fitBounds(bounds, { padding: 40 });
+        });
+    })();
+</script>
+
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "divert/layout.html" %}
+{% block body %}
+
+<style>
+    .ranch-report {
+        max-width: 1100px;
+        margin: 20px auto;
+    }
+</style>
+
+<div class="ranch-report">
+    <h2>Ranch Pool Report{% if selected_ranch %}: {{ selected_ranch }}{% endif %}</h2>
+
+    {% if selected_ranch %}
+    <p><a href="{% url 'map_ranch' %}">&laquo; Show all ranches</a></p>
+    {% endif %}
+
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>Pool</th>
+                <th>Year</th>
+                <th>Variety</th>
+                <th>Grower</th>
+                <th>Ranch</th>
+                <th>Parcel</th>
+                <th>Pack Start</th>
+                <th>Pack End</th>
+                <th>Bins</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in production_records %}
+            <tr>
+                <td><a href="{% url 'map_pool' %}?pool={{ record.pool|urlencode }}">{{ record.pool }}</a></td>
+                <td>{{ record.year }}</td>
+                <td>{{ record.variety }}</td>
+                <td>{{ record.grower }}</td>
+                <td>{{ record.ranch }}</td>
+                <td>{{ record.parcel }}</td>
+                <td>{{ record.pack_start }}</td>
+                <td>{{ record.pack_end }}</td>
+                <td>{{ record.bins }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9">No pools found{% if selected_ranch %} for "{{ selected_ranch }}"{% endif %}.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

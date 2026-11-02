@@ -1,0 +1,58 @@
+{% extends "divert/layout.html" %}
+{% block body %}
+
+<style>
+    .pool-report {
+        max-width: 900px;
+        margin: 20px auto;
+    }
+    .pool-card {
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: #fff;
+    }
+    .pool-card h4 {
+        margin-top: 0;
+    }
+    .pool-card table {
+        width: 100%;
+    }
+    .pool-card table td {
+        padding: 3px 8px;
+        border-bottom: 1px solid #eee;
+        vertical-align: top;
+    }
+    .pool-card table td.label {
+        font-weight: bold;
+        white-space: nowrap;
+        width: 220px;
+    }
+</style>
+
+<div class="pool-report">
+    <h2>Pool Production Report</h2>
+
+    {% if selected_pool %}
+    <p><a href="{% url 'map_pool' %}">&laquo; Show all pools</a></p>
+    {% endif %}
+
+    {% for pool in pools %}
+    <div class="pool-card">
+        <h4>{{ pool.record.pool }}</h4>
+        <table>
+            {% for label, value in pool.fields %}
+            <tr>
+                <td class="label">{{ label }}</td>
+                <td>{{ value|default_if_none:"" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+    {% empty %}
+    <p>No pool records found{% if selected_pool %} for "{{ selected_pool }}"{% endif %}.</p>
+    {% endfor %}
+</div>
+
+{% endblock %}

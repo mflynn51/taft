@@ -1,0 +1,791 @@
+{% extends "divert/layout.html" %}
+{% block body %}
+
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.css" rel="stylesheet"/>
+</head>
+<style>
+    #container {
+                display: flex;
+                flex-wrap: wrap;
+    }
+
+    body {
+        padding: 0;
+        margin: 0;
+    }
+
+    html, body, #map {
+        height: 100%;
+        width: 100vw;
+    }
+    
+    .layer-control {
+        position: absolute;
+        background: #fff;
+        padding: 5px;
+        right: 5px;
+        top: 5px;
+        z-index: 10;
+    }
+
+    @media (max-width: 768px) {
+                #map {
+                    height: 50vh; 
+                }
+                }
+    
+    .pagination {
+        display: inline-block;
+        }
+
+    .pagination a {
+        color: black;
+        float: left;
+        padding: 8px 16px;
+        text-decoration: none;
+        }
+</style>
+
+<div class="container"></div>
+
+<div class="row">
+    
+    <div class="col-lg-3">
+        <h3>New Ranch</h3>
+        <div class="form-group">
+            <input class="form-control" type="text" id="ranchName" name="name" placeholder="Name">
+        </div>
+        <div class="form-group">
+            <input class="form-control" type="text" id="ranchApn" name="apn" placeholder="APN">
+        </div>
+        <div class="form-group">
+            <input class="form-control" type="text" id="ranchVariety" name="variety" placeholder="Variety">
+        </div>
+        <div class="form-group">
+            <input class="form-control" type="text" id="ranchBud" name="bud" placeholder="Bud">
+        </div>
+        <div class="form-group">
+            <input class="form-control" type="text" id="ranchRootstock" name="rootstock" placeholder="Rootstock">
+        </div>
+        <div class="form-group">
+            <input class="form-control" type="number" id="ranchYearPlanted" name="year_planted" placeholder="Year Planted">
+        </div>
+        <button id="createRanch" class="btn btn-primary" disabled>Create New Ranch</button>
+        <button id="clearRanchPoints" class="btn btn-secondary" disabled>Clear Points</button>
+        <p id="treePointsStatus">Points collected: 0 / 4</p>
+
+        <h3>Ranches</h3>
+        <table class="table table-sm table-striped" id="treeBlockList">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>APN</th>
+                    <th>Variety</th>
+                    <th>Bud</th>
+                    <th>Rootstock</th>
+                    <th>Year Planted</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tree_block in tree_blocks %}
+                <tr>
+                    <td><a href="{% url 'tree_block_detail' tree_block.id %}">{{ tree_block.name }}</a></td>
+                    <td>{{ tree_block.apn }}</td>
+                    <td>{{ tree_block.variety }}</td>
+                    <td>{{ tree_block.bud }}</td>
+                    <td>{{ tree_block.rootstock }}</td>
+                    <td>{{ tree_block.year_planted }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="col-lg-6">
+        
+        <div style="position: relative; width: 1500px; max-width: 100%;">
+            <div id="map" style="height: 1200px; width: 100%;" >
+
+            </div>
+            <div class="layer-control" style="right: 50px; top: 10px;">
+                <label style="display: block;">
+                    <input type="checkbox" id="toggleWaterDistricts" checked> Water Districts
+                </label>
+                <label style="display: block;">
+                    <input type="checkbox" id="toggleParcels" checked> Parcels
+                </label>
+            </div>
+        </div>
+            <button id="loadMapData">Load Map Data</button>
+
+    </div>
+
+    <div class="col-lg-3">
+        <ul id="locations"></ul>
+    
+        <h3>Pools by Ranch</h3>
+        <ul>
+            <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Pool</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ranch in ranches %}
+                <tr>
+                    <td><a href="{% url 'map_ranch' %}?ranch={{ ranch|urlencode }}">{{ ranch }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </ul>
+        <div class="pagination">
+            <span class="step-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1">&laquo; first</a>
+                    <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+                {% endif %}
+        
+                <span class="current">
+                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+                </span>
+        
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}">next</a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}">last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+        
+    </div>
+
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <h3>Production Records</h3>
+        <table class="table table-sm table-striped">
+            <thead>
+                <tr>
+                    <th>Pool</th>
+                    <th>Year</th>
+                    <th>Variety</th>
+                    <th>Grower</th>
+                    <th>Ranch</th>
+                    <th>Parcel</th>
+                    <th>Pack Start</th>
+                    <th>Pack End</th>
+                    <th>Bins</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in production_records %}
+                <tr>
+                    <td><a href="{% url 'map_pool' %}?pool={{ record.pool|urlencode }}">{{ record.pool }}</a></td>
+                    <td>{{ record.year }}</td>
+                    <td>{{ record.variety }}</td>
+                    <td>{{ record.grower }}</td>
+                    <td>{{ record.ranch }}</td>
+                    <td>{{ record.parcel }}</td>
+                    <td>{{ record.pack_start }}</td>
+                    <td>{{ record.pack_end }}</td>
+                    <td>{{ record.bins }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <p>Contact: <a href="mailto:flynn@drycreekmaps.com">flynn@drycreekmaps.com</a></p>
+    </div>
+</div>
+
+{{ locations|json_script:'locations_json'}}
+{{ tree_blocks_json|json_script:'tree_blocks_json' }}
+{{ cvp_class1_contracts|json_script:'cvp_class1_contracts_json' }}
+
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
+
+<script>
+    async function initializeMap() {
+        const apiKey = "v1.public.eyJqdGkiOiI3NzhjODBiZS01OGVlLTQzZDQtYjJlOC1jZWNjOTJkNTI3YTQifUKuSyxdMDBCxkGqmkII1c_7L6T-ewrXS-ALCQbowQsl7HUrkOXY0Rx7KsAHjDqQRASGMNVG6plCk7AjYrZ32S5tZcCRH4Sc7TakT3cIyipnYwA1YbZ0aKTyEnHNfl5uNfzrvw4INKiDNNUJDytyf96qVPCIjNm8Ty1HIJoOtDC37yzp_dacYubxML8pugr35e3RVOGG06W2fEV9j-WvK_QfSyH6MxRltHw5cvfF4ohWJ9sUmO0-U8RPNC3xH2jB2kceMk7vnlEuoz6mBdwzVbDW0q2lPPYXuDEoYqBJfALBslmiIIQrJQVWIiiy4ZCgUJxeeeS28NGXGZvxGLd3cRI.ZWU0ZWIzMTktMWRhNi00Mzg0LTllMzYtNzlmMDU3MjRmYTkx";
+        const region = "us-east-1";
+
+        // Initialize the map
+        const map = new maplibregl.Map({
+              container: "map",
+              // Initial map centerpoint
+              center: [-119.5, 36.5],
+              // Initial zoom level
+              zoom: 10,
+              style: `https://maps.geo.${region}.amazonaws.com/v2/styles/Satellite/descriptor?key=${apiKey}&color-scheme=Light`,
+              validateStyle: false, // Disable style validation for faster map load
+        });
+
+        // Add navigation controls
+        // Add navigation controls
+        map.addControl(
+            new maplibregl.NavigationControl(),
+            "top-right"
+        );
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showLocation, handleLocationError);
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+
+
+        map.on('load', async () => {
+            const preloadedTreeBlocks = JSON.parse(document.getElementById('tree_blocks_json').textContent);
+            preloadedTreeBlocks.forEach((treeBlock) => {
+                drawTreeBlock(treeBlock.coordinates, treeBlock.name);
+            });
+
+            map.addSource('golf-area', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [[
+                            [-119.48, 36.32],
+                            [-119.42, 36.32],
+                            [-119.42, 36.30],
+                            [-119.48, 36.30],
+                            [-119.48, 36.32]
+                        ]]
+                    }
+                }
+            });
+
+            map.addLayer({
+                id: 'golf-area-fill',
+                type: 'fill',
+                source: 'golf-area',
+                paint: {
+                    'fill-color': '#00FF00',
+                    'fill-opacity': 0.4
+                }
+            });
+
+            map.addLayer({
+                id: 'golf-area-outline',
+                type: 'line',
+                source: 'golf-area',
+                paint: {
+                    'line-color': '#00FF00',
+                    'line-width': 2
+                }
+            });
+
+            map.addSource('tulare-parcels', {
+                type: 'geojson',
+                data: '/api/parcels/tulare/'
+            });
+
+            const targetParcels = [
+                '112110005',
+                '112160014',
+                '141010028',
+                '141010030',
+                '141010031',
+                '214120014',
+                '214160026',
+                '216010005',
+                '215340006',
+                '214160026'
+            ];
+            const ownerFilter = ['in', ['get', 'parcelnumb'], ['literal', targetParcels]];
+
+            map.addLayer({
+                id: 'tulare-parcels-outline',
+                type: 'line',
+                source: 'tulare-parcels',
+                filter: ownerFilter,
+                paint: {
+                    'line-color': '#FF6600',
+                    'line-width': 2
+                }
+            });
+
+            map.addLayer({
+                id: 'tulare-parcels-fill',
+                type: 'fill',
+                source: 'tulare-parcels',
+                filter: ownerFilter,
+                paint: {
+                    'fill-color': '#FF6600',
+                    'fill-opacity': 0.4
+                }
+            });
+
+            map.addLayer({
+                id: 'tulare-parcels-label',
+                type: 'symbol',
+                source: 'tulare-parcels',
+                filter: ownerFilter,
+                layout: {
+                    'text-field': ['get', 'parcelnumb'],
+                    'text-size': 11
+                },
+                paint: {
+                    'text-color': '#FF6600',
+                    'text-halo-color': '#FFFFFF',
+                    'text-halo-width': 1.5
+                }
+            });
+
+            const parcelPopup = new maplibregl.Popup({ offset: 12, closeButton: false });
+
+            map.on('click', 'tulare-parcels-fill', (e) => {
+                const props = e.features[0].properties;
+                parcelPopup
+                    .setLngLat(e.lngLat)
+                    .setHTML(`<b>Parcel ${props.parcelnumb ?? ''}</b><br>
+                        Owner: ${props.owner ?? 'Unknown'}<br>
+                        Address: ${props.address ?? ''}, ${props.city ?? ''}<br>
+                        Acres: ${props.ll_gisacre ?? ''}`)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'tulare-parcels-fill', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', 'tulare-parcels-fill', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            // Join the CVP Class 1 contract CSV (IDforMap) to OBJECTID on the water districts GeoJSON
+            const cvpClass1Contracts = JSON.parse(document.getElementById('cvp_class1_contracts_json').textContent);
+
+            const waterDistrictsUrl = 'https://gis.water.ca.gov/arcgis/rest/services/Boundaries/i03_WaterDistricts/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson';
+
+            let waterDistrictsData = waterDistrictsUrl;
+            try {
+                const waterDistrictsGeojson = await (await fetch(waterDistrictsUrl)).json();
+                waterDistrictsGeojson.features.forEach((feature) => {
+                    const key = String(feature.properties.OBJECTID ?? '').trim();
+                    const contract = cvpClass1Contracts[key];
+                    feature.properties.cvp_class1 = Boolean(contract);
+                    if (contract) {
+                        feature.properties.cvp_agency = contract.agency;
+                        feature.properties.cvp_agency_uniq = contract.agency_uniq;
+                        feature.properties.cvp_contract = contract.contract;
+                        feature.properties.cvp_contract_full = contract.cvp_contract;
+                        feature.properties.cvp_division = contract.division;
+                        feature.properties.cvp_unit = contract.unit;
+                        feature.properties.cvp_max_contract_quantity = contract.max_contract_quantity;
+                        feature.properties.cvp_mi_use = contract.mi_use;
+                        feature.properties.cvp_contract_amount_ag = contract.contract_amount_ag;
+                        feature.properties.cvp_expiry = contract.expiry;
+                    }
+                });
+                waterDistrictsData = waterDistrictsGeojson;
+            } catch (err) {
+                console.error('Failed to load / join water districts GeoJSON', err);
+            }
+
+            map.addSource('water-districts', {
+                type: 'geojson',
+                data: waterDistrictsData
+            });
+
+            const districtName = ['coalesce', ['get', 'AGENCYNAME'], ['get', 'DISTRICT_NAME'], ''];
+            const waterDistrictFilter = ['any',
+                ['>=', ['index-of', 'Water District', districtName], 0],
+                ['>=', ['index-of', 'Irrigation District', districtName], 0],
+                ['>=', ['index-of', 'Water Storage District', districtName], 0]
+            ];
+
+            // Give each district its own color by cycling a palette off its id
+            const districtColor = [
+                'match',
+                ['%', ['to-number', ['coalesce', ['get', 'OBJECTID'], ['get', 'FID'], 0]], 12],
+                0, '#e6194B',
+                1, '#3cb44b',
+                2, '#ffe119',
+                3, '#4363d8',
+                4, '#f58231',
+                5, '#911eb4',
+                6, '#42d4f4',
+                7, '#f032e6',
+                8, '#bfef45',
+                9, '#fabed4',
+                10, '#469990',
+                11, '#9A6324',
+                '#999999'
+            ];
+
+            map.addLayer({
+                id: 'water-districts-fill',
+                type: 'fill',
+                source: 'water-districts',
+                filter: waterDistrictFilter,
+                paint: {
+                    'fill-color': districtColor,
+                    'fill-opacity': 0.3
+                }
+            });
+
+            map.addLayer({
+                id: 'water-districts-outline',
+                type: 'line',
+                source: 'water-districts',
+                filter: waterDistrictFilter,
+                paint: {
+                    'line-color': districtColor,
+                    // Thicker outline for districts that hold a CVP Class 1 contract
+                    'line-width': ['case', ['==', ['get', 'cvp_class1'], true], 3.5, 1.5]
+                }
+            });
+
+            map.addLayer({
+                id: 'water-districts-label',
+                type: 'symbol',
+                source: 'water-districts',
+                filter: waterDistrictFilter,
+                layout: {
+                    'text-field': ['coalesce', ['get', 'AGENCYNAME'], ['get', 'DISTRICT_NAME'], ['get', 'AGENCYUNIQ']],
+                    'text-size': 12
+                },
+                paint: {
+                    'text-color': '#003366',
+                    'text-halo-color': '#FFFFFF',
+                    'text-halo-width': 1.5
+                }
+            });
+
+            const waterDistrictPopup = new maplibregl.Popup({ offset: 12, closeButton: false });
+
+            map.on('click', 'water-districts-fill', (e) => {
+                const props = e.features[0].properties;
+                const name = props.AGENCYNAME ?? props.DISTRICT_NAME ?? 'Water District';
+                let html = `<b>${name}</b>`;
+                if (props.cvp_class1 === true || props.cvp_class1 === 'true') {
+                    html += `<hr style="margin:4px 0">
+                        <b>CVP Class 1 Contract</b><br>
+                        Contract: ${props.cvp_contract ?? ''}<br>
+                        Division: ${props.cvp_division ?? ''} &ndash; ${props.cvp_unit ?? ''}<br>
+                        Max Contract Quantity: ${props.cvp_max_contract_quantity ?? ''} AF<br>
+                        M&amp;I Use: ${props.cvp_mi_use ?? ''} AF<br>
+                        AG Amount: ${props.cvp_contract_amount_ag ?? ''} AF<br>
+                        Expiry: ${props.cvp_expiry ?? ''}`;
+                } else {
+                    html += `<br><i>No CVP Class 1 contract</i>`;
+                }
+                waterDistrictPopup
+                    .setLngLat(e.lngLat)
+                    .setHTML(html)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'water-districts-fill', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', 'water-districts-fill', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            const waterDistrictLayers = ['water-districts-fill', 'water-districts-outline', 'water-districts-label'];
+            const waterDistrictToggle = document.getElementById('toggleWaterDistricts');
+
+            function updateWaterDistrictsVisibility() {
+                const visibility = waterDistrictToggle.checked ? 'visible' : 'none';
+                waterDistrictLayers.forEach((layerId) => {
+                    map.setLayoutProperty(layerId, 'visibility', visibility);
+                });
+            }
+
+            waterDistrictToggle.addEventListener('change', updateWaterDistrictsVisibility);
+            updateWaterDistrictsVisibility();
+
+            const parcelLayers = ['tulare-parcels-fill', 'tulare-parcels-outline', 'tulare-parcels-label'];
+            const parcelToggle = document.getElementById('toggleParcels');
+
+            function updateParcelsVisibility() {
+                const visibility = parcelToggle.checked ? 'visible' : 'none';
+                parcelLayers.forEach((layerId) => {
+                    map.setLayoutProperty(layerId, 'visibility', visibility);
+                });
+            }
+
+            parcelToggle.addEventListener('change', updateParcelsVisibility);
+            updateParcelsVisibility();
+        });
+
+        if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showLocation, handleLocationError);
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
+
+    function showLocation(position) {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        map.setCenter([longitude, latitude]);
+
+        const geojson = {
+            'type': 'FeatureCollection',
+            'features': [
+                {
+                    'type': 'Feature',
+                    'geometry': {
+                        'type': 'Point',
+                        'coordinates': [longitude, latitude]
+                    }
+                }
+            ]
+        };
+
+        // Add a data source for the current location
+        map.addSource('current-location', {
+            'type': 'geojson',
+            'data': geojson
+        });
+
+        // Add a layer to render the current location as a red circle
+        map.addLayer({
+            'id': 'current-location-circle',
+            'type': 'circle',
+            'source': 'current-location',
+            'paint': {
+                'circle-radius': 10,
+                'circle-color': '#FF0000', // Red color
+                'circle-opacity': 0.8
+            }
+        });
+
+        // Create a popup
+        const popup = new maplibregl.Popup({ offset: 25 })
+            .setHTML(`<b>Your Location</b><br>Latitude: ${latitude.toFixed(6)}<br>Longitude: ${longitude.toFixed(6)}`);
+
+        // Attach the popup to the layer (will open on click)
+
+        map.on('click', 'current-location-circle', (e) => {
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            popup.setLngLat(coordinates).addTo(map);
+        });
+
+        // Optionally, you can add a marker as well if you prefer a traditional marker icon
+        new maplibregl.Marker({ color: '#FF0000' })
+            .setLngLat([longitude, latitude])
+            .setPopup(popup)
+            .addTo(map);
+    }
+
+    function handleLocationError(error) {
+        let errorMessage = "Unable to retrieve your location.";
+        switch (error.code) {
+            case error.PERMISSION_DENIED:
+                errorMessage = "User denied the request for Geolocation.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                errorMessage = "Location information is unavailable.";
+                break;
+            case error.TIMEOUT:
+                errorMessage = "The request to get user location timed out.";
+                break;
+            case error.UNKNOWN_ERROR:
+                errorMessage = "An unknown error occurred.";
+                break;
+        }
+        alert(errorMessage);
+    }
+    // --- get the elevation of the clicked location
+    map.on('click', (e) => {
+        const elevation = map.queryTerrainElevation(e.lngLat);
+        const coords = `Lat: ${e.lngLat.lat.toFixed(6)}, Lng: ${e.lngLat.lng.toFixed(6)}`;
+
+        new maplibregl.Popup({ offset: 25 })
+            .setLngLat(e.lngLat)
+            .setHTML(elevation != null
+                ? `<b>Elevation</b><br>${elevation.toFixed(2)} meters<br>${coords}`
+                : `<b>Elevation</b><br>Not available yet.<br>${coords}`)
+            .addTo(map);
+    });
+
+    // --- Tree block creation: collect 4 to 6 map clicks, then create a TreeBlock ---
+    const MIN_TREE_POINTS = 4;
+    const MAX_TREE_POINTS = 6;
+    let treePoints = [];
+    let treeMarkers = [];
+    let treeBlockCounter = 0;
+
+    function updateTreePointsStatus() {
+        document.getElementById('treePointsStatus').textContent = `Points collected: ${treePoints.length} / ${MAX_TREE_POINTS}`;
+        document.getElementById('createRanch').disabled = treePoints.length < MIN_TREE_POINTS;
+        document.getElementById('clearRanchPoints').disabled = treePoints.length === 0;
+    }
+
+    function clearTreePoints() {
+        treePoints = [];
+        treeMarkers.forEach((marker) => marker.remove());
+        treeMarkers = [];
+        updateTreePointsStatus();
+    }
+
+    document.getElementById('clearRanchPoints').addEventListener('click', clearTreePoints);
+
+    map.on('click', (e) => {
+        if (treePoints.length >= MAX_TREE_POINTS) {
+            return;
+        }
+
+        treePoints.push([e.lngLat.lng, e.lngLat.lat]);
+        treeMarkers.push(
+            new maplibregl.Marker({ color: '#FFFF00' })
+                .setLngLat(e.lngLat)
+                .addTo(map)
+        );
+        updateTreePointsStatus();
+    });
+
+    function drawTreeBlock(coordinates, name) {
+        const id = `tree-block-${treeBlockCounter++}`;
+        const ring = [...coordinates, coordinates[0]];
+
+        map.addSource(id, {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: { name: name },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [ring],
+                },
+            },
+        });
+
+        map.addLayer({
+            id: `${id}-fill`,
+            type: 'fill',
+            source: id,
+            paint: {
+                'fill-color': '#FFFF00',
+                'fill-opacity': 0.5,
+            },
+        });
+
+        map.addLayer({
+            id: `${id}-outline`,
+            type: 'line',
+            source: id,
+            paint: {
+                'line-color': '#FFFF00',
+                'line-width': 2,
+            },
+        });
+
+        map.addLayer({
+            id: `${id}-label`,
+            type: 'symbol',
+            source: id,
+            layout: {
+                'text-field': ['get', 'name'],
+                'text-size': 14,
+            },
+            paint: {
+                'text-color': '#000000',
+                'text-halo-color': '#FFFFFF',
+                'text-halo-width': 1,
+            },
+        });
+    }
+
+    document.getElementById('createRanch').addEventListener('click', async () => {
+        const name = document.getElementById('ranchName').value.trim();
+        const apn = document.getElementById('ranchApn').value.trim();
+        const variety = document.getElementById('ranchVariety').value.trim();
+        const bud = document.getElementById('ranchBud').value.trim();
+        const rootstock = document.getElementById('ranchRootstock').value.trim();
+        const yearPlanted = document.getElementById('ranchYearPlanted').value.trim();
+
+        if (!name || !variety || !yearPlanted) {
+            alert('Please fill in name, variety, and year planted.');
+            return;
+        }
+
+        if (treePoints.length < MIN_TREE_POINTS || treePoints.length > MAX_TREE_POINTS) {
+            alert(`Please click ${MIN_TREE_POINTS} to ${MAX_TREE_POINTS} points on the map to define the block.`);
+            return;
+        }
+
+        const payload = {
+            name: name,
+            apn: apn,
+            variety: variety,
+            bud: bud,
+            rootstock: rootstock,
+            year_planted: yearPlanted,
+            lat1: treePoints[0][1], lon1: treePoints[0][0],
+            lat2: treePoints[1][1], lon2: treePoints[1][0],
+            lat3: treePoints[2][1], lon3: treePoints[2][0],
+            lat4: treePoints[3][1], lon4: treePoints[3][0],
+        };
+
+        if (treePoints[4]) {
+            payload.lat5 = treePoints[4][1];
+            payload.lon5 = treePoints[4][0];
+        }
+        if (treePoints[5]) {
+            payload.lat6 = treePoints[5][1];
+            payload.lon6 = treePoints[5][0];
+        }
+
+        const response = await fetch("{% url 'create_tree_block' %}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            alert('Failed to create ranch.');
+            return;
+        }
+
+        const result = await response.json();
+        drawTreeBlock(result.coordinates, result.name);
+
+        const detailUrl = "{% url 'tree_block_detail' 0 %}".replace('/0/', '/' + result.id + '/');
+
+        const row = document.createElement('tr');
+
+        const nameCell = document.createElement('td');
+        const nameLink = document.createElement('a');
+        nameLink.href = detailUrl;
+        nameLink.textContent = name;
+        nameCell.appendChild(nameLink);
+        row.appendChild(nameCell);
+
+        [apn, variety, bud, rootstock, yearPlanted].forEach((value) => {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            row.appendChild(cell);
+        });
+        document.querySelector('#treeBlockList tbody').appendChild(row);
+
+        clearTreePoints();
+
+        document.getElementById('ranchName').value = '';
+        document.getElementById('ranchApn').value = '';
+        document.getElementById('ranchVariety').value = '';
+        document.getElementById('ranchBud').value = '';
+        document.getElementById('ranchRootstock').value = '';
+        document.getElementById('ranchYearPlanted').value = '';
+    });
+    }
+
+    initializeMap();
+</script>
+
+
+{% endblock %}
