@@ -13,8 +13,13 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Secrets come from the environment; hydro/.env (git-ignored) fills them in locally.
+load_dotenv(BASE_DIR / ".env")
 
 CSRF_COOKIE_SECURE = False # i added to try to fix 403 error
 SESSION_COOKIE_SECURE = False # i added to try to fix 403 error
@@ -23,7 +28,7 @@ SESSION_COOKIE_SECURE = False # i added to try to fix 403 error
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-i(l!!3b#$dn$33z!n8q#s3%w9*q+842^h-v^ntu4_%&p^&!b#7"
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True # changed from True on 3/31/25 for Bitnami
@@ -97,11 +102,11 @@ DATABASES = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'dbmasteruser',
-        'PASSWORD': 'ux}QH6%>Rr<`-,0|aAp^)nM5m^AvQ5hA',
-        'HOST': 'ls-85cababd0c153104e11ff8fab6f5d0cfa213aed9.c6jyya6m85sp.us-east-1.rds.amazonaws.com',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'postgres'),
+        'USER': os.environ['DB_USER'],
+        'PASSWORD': os.environ['DB_PASSWORD'],
+        'HOST': os.environ['DB_HOST'],
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

@@ -25,3 +25,8 @@
 **/values.dev.yaml
 LICENSE
 README.md
+**/.DS_Store
+# Raw parcel shapefiles are multi-GB; the app only needs the generated GeoJSON cache.
+divert/data/parcels/ca_tulare.shp
+divert/data/parcels/ca_tulare.dbf
+divert/data/parcels/ca_tulare.prj

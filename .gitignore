@@ -1,2 +1,5 @@
 # Raw parcel shapefiles and generated GeoJSON cache are too large for git (multi-GB).
 hydro/divert/data/parcels/
+
+# Local secrets
+.env

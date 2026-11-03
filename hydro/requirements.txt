@@ -6,6 +6,7 @@ djangorestframework>=3.16.0
 psycopg[binary]
 pyshp
 shapely
+python-dotenv
 
 
 
