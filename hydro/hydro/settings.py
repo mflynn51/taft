@@ -21,8 +21,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Secrets come from the environment; hydro/.env (git-ignored) fills them in locally.
 load_dotenv(BASE_DIR / ".env")
 
-CSRF_COOKIE_SECURE = False # i added to try to fix 403 error
-SESSION_COOKIE_SECURE = False # i added to try to fix 403 error
+
+def env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes")
+
+
+def env_list(name, default=""):
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+# Set DJANGO_HTTPS=True when the site is served over HTTPS behind the Caddy proxy.
+# Caddy terminates TLS and sets X-Forwarded-Proto, which tells Django the request was
+# secure; without it, form POSTs fail the CSRF origin check with a 403.
+HTTPS = env_bool("DJANGO_HTTPS")
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_COOKIE_SECURE = HTTPS
+SESSION_COOKIE_SECURE = HTTPS
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -31,9 +46,9 @@ SESSION_COOKIE_SECURE = False # i added to try to fix 403 error
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True # changed from True on 3/31/25 for Bitnami
+DEBUG = env_bool("DJANGO_DEBUG")
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 
 # Application definition
@@ -56,6 +71,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # serves static files under gunicorn
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

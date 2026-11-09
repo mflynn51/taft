@@ -3,3 +3,6 @@ hydro/divert/data/parcels/
 
 # Local secrets
 .env
+
+# collectstatic output
+hydro/staticfiles/
